@@ -1,57 +1,38 @@
-// Function to generate filters for integers
-
-
-
 const generateFilter = (field, enumNames) => {
+    const baseType = field.type.replace('?', '');
 
-    if (enumNames.includes(field.type.replace('?', ''))) {
-
-        return `{${field.name}: genarateEnumFilter(filters.${field.name})}`;
+    if (enumNames.includes(baseType)) {
+        return `{${field.name}: generateEnumFilter(filters.${field.name})}`;
     }
 
-    switch (field.type.replace('?', '')) {
-        case 'Int':
-            return `{${field.name}: generateIntegerFilter(filters.${field.name})}`;
-        case 'Boolean':
-            return `{${field.name}: generateBooleanFilter(filters.${field.name})}`;
-        case 'Date':
-            return `{${field.name}: generateDateFilter(filters.${field.name})}`;
-        case 'String':
-        case 'String?':
-            return `{${field.name}: generateStringFilter(filters.${field.name})}`;
+    const filterMapping = {
+        'Int': 'generateIntegerFilter',
+        'Boolean': 'generateBooleanFilter',
+        'Date': 'generateDateFilter',
+        'String': 'generateStringFilter'
+    };
 
-        default:
-            return null;
-    }
+    const filterFunction = filterMapping[baseType];
+    return filterFunction ? `{${field.name}: ${filterFunction}(filters.${field.name})}` : null;
 };
 
-
-
-
-const crudTemplate = function (model, enums) {
-    const enumNames = enums.map(enumValue => enumValue.name);
-    const validDataTpes = [
-        'Int',
-        'Boolean',
-        'Date',
-        'String',
-        ...enumNames,
-    ]
-    const validFields = model.fields
-        .filter(field => validDataTpes.includes(field.type.replace('?', '')));
-
-    console.log({ validFields, fields: model.fields, enums, enumNames });
+const crudTemplate = (model, enums) => {
+    const enumNames = enums.map(enumObj => enumObj.name);
+    const validFields = model.fields.filter(field => ['Int', 'Boolean', 'Date', 'String', ...enumNames]
+        .includes(field.type.replace('?', ''))
+    );
 
     const searchFields = model.fields
-        .filter(field => field.type === 'String' || field.type === 'String?')
-        .map(field => `{${field.name}: { contains: search, mode: 'insensitive'} }`);
+        .filter(field => field.type.includes('String'))
+        .map(field => `{ ${field.name}: { contains: search, mode: 'insensitive' } }`);
+
     return `
 const { PrismaClient } = require('@prisma/client');
-const { generateIntegerFilter, generateStringFilter, generateBooleanFilter,genarateEnumFilter } = require('../utils/filterUtils');
+const { generateIntegerFilter, generateStringFilter, generateBooleanFilter, generateEnumFilter } = require('../utils/filterUtils');
 
 const prisma = new PrismaClient();
 
-exports.create${model.name} = async (req, res) => {
+const create${model.name} = async (req, res) => {
     try {
         const result = await prisma.${model.name}.create({ data: req.body });
         res.status(201).json(result);
@@ -60,56 +41,48 @@ exports.create${model.name} = async (req, res) => {
     }
 };
 
-exports.get${model.name} = async (req, res) => {
+const get${model.name} = async (req, res) => {
     try {
-     const { search, page = 1, limit = 10,  sortBy = 'id', sortOrder = 'asc',...filters } = req.query;
-
+        const { search, page = 1, limit = 10, sortBy = 'id', sortOrder = 'asc', ...filters } = req.query;
         const currentPage = Math.max(1, parseInt(page, 10));
         const pageSize = Math.max(1, parseInt(limit, 10));
-
         const skip = (currentPage - 1) * pageSize;
-        const take = pageSize;
-         const where = {
-
-        AND:[
-         ${validFields
-            .map(field => {
-                const filter = generateFilter(field, enumNames);
-                return `filters.${field.name}?${filter}:{}`;
-            }).join(',\n            ')},].filter(Boolean),
-         ${searchFields.length > 0 ? `OR:search
-            ?  [ 
-         ${searchFields
-                .join(',\n            ')}]            : undefined,` : ``}
+        
+        const where = {
+            AND: [
+                ${validFields.map(field => {
+        const filter = generateFilter(field, enumNames);
+        return `filters.${field.name} ? ${filter} : {}`;
+    }).join(',\n')}
+            ].filter(Boolean),
+            ${searchFields.length > 0 ? `OR: search ? [ ${searchFields.join(', ')} ] : undefined,` : ''}
         };
-           
-const validSortFields = [${validFields.map(field => `"${field.name}"`).join(', ')}];
-    const orderBy = validSortFields.includes(sortBy)
-        ? { [sortBy]: sortOrder === 'desc' ? 'desc' : 'asc' }
-        : { id: 'asc' }; 
+        const validFields = [${validFields.map(field => `"${field.name}"`).join(', ')}];
+        const orderBy = validFields.includes(sortBy) ? { [sortBy]: sortOrder === 'desc' ? 'desc' : 'asc' } : { id: 'asc' };
 
-             const totalCount = await prisma.${model.name.toLowerCase()}.count({ where });
+        const totalCount = await prisma.${model.name.toLowerCase()}.count({ where });
         const results = await prisma.${model.name.toLowerCase()}.findMany({
             where,
-              skip,
-            take,
-               orderBy,
+            skip,
+            take: pageSize,
+            orderBy
         });
-           res.status(200).json({
+
+        res.status(200).json({
             data: results,
             meta: {
                 totalItems: totalCount,
                 totalPages: Math.ceil(totalCount / pageSize),
                 currentPage,
-                pageSize,
-            },
+                pageSize
+            }
         });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
 
-exports.update${model.name} = async (req, res) => {
+const update${model.name} = async (req, res) => {
     try {
         const result = await prisma.${model.name}.update({
             where: { id: parseInt(req.params.id) },
@@ -121,7 +94,7 @@ exports.update${model.name} = async (req, res) => {
     }
 };
 
-exports.get${model.name}ById = async (req, res) => {
+const get${model.name}ById = async (req, res) => {
     try {
         const result = await prisma.${model.name}.findUnique({
             where: { id: parseInt(req.params.id) },
@@ -132,7 +105,7 @@ exports.get${model.name}ById = async (req, res) => {
     }
 };
 
-exports.delete${model.name} = async (req, res) => {
+const delete${model.name} = async (req, res) => {
     try {
         const result = await prisma.${model.name}.delete({
             where: { id: parseInt(req.params.id) },
@@ -141,6 +114,14 @@ exports.delete${model.name} = async (req, res) => {
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
+};
+
+module.exports = {
+    create${model.name},
+    get${model.name},
+    update${model.name},
+    get${model.name}ById,
+    delete${model.name}
 };
 `;
 };
