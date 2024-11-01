@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id        Int       @id @default(autoincrement())
+    mobile    String    @unique
+    name      String?
+    age       Int       @default(0)
+    isAdmin   Boolean   @default(false)
+    addresses Address[]
+    cart      Cart?
+    Orders    Order[]
+}
+
+model Address {
+    id        Int     @id @default(autoincrement())
+    address   String
+    pincode   Int
+    isPrimary Boolean @default(false)
+    user      User    @relation(fields: [userid], references: [id])
+    userid    Int
+    orders    Order[]
+}
+
+model Cart {
+    id       Int        @id @default(autoincrement())
+    userId   Int        @unique // A cart is linked to a unique user
+    user     User       @relation(fields: [userId], references: [id])
+    products CartItem[]
+}
+
+model CartItem {
+    id        Int     @id @default(autoincrement())
+    cartId    Int
+    cart      Cart    @relation(fields: [cartId], references: [id])
+    productId Int
+    product   Product @relation(fields: [productId], references: [id])
+    quantity  Int
+    price     Int
+    sizeid    Int
+    colorid   Int
+    size      Size    @relation(fields: [sizeid], references: [id])
+    color     Color   @relation(fields: [colorid], references: [id])
+}
+
+model Order {
+    id        Int         @id @default(autoincrement())
+    userId    Int         @unique // A cart is linked to a unique user
+    user      User        @relation(fields: [userId], references: [id])
+    products  OrderItem[]
+    total     Int
+    address   Address     @relation(fields: [addressid], references: [id])
+    addressid Int
+    payment   Payment?
+    paymentId Int?        @unique
+    status    OrderStatus
+}
+
+model OrderItem {
+    id        Int     @id @default(autoincrement())
+    cartId    Int
+    cart      Order   @relation(fields: [cartId], references: [id])
+    productId Int
+    product   Product @relation(fields: [productId], references: [id])
+    quantity  Int
+    price     Int
+}
+
+model Product {
+    id          Int              @id @default(autoincrement())
+    name        String
+    description String
+    color       Color[]
+    Size        Size[]
+    timer       Timer?           @relation(fields: [timerid], references: [id])
+    timerid     Int?
+    images      String[]
+    price       Decimal
+    discount    Decimal
+    cartItems   OrderItem[]
+    CartItem    CartItem[]
+    variants    ProductVariant[]
+}
+
+model Size {
+    id         Int              @id @default(autoincrement())
+    size       String
+    sizeGuid   String
+    product    Product          @relation(fields: [productint], references: [id])
+    productint Int
+    CartItem   CartItem[]
+    variants   ProductVariant[]
+}
+
+model Color {
+    id         Int              @id @default(autoincrement())
+    color      String
+    colorGuid  String
+    product    Product          @relation(fields: [productint], references: [id])
+    productint Int
+    variants   ProductVariant[]
+    CartItem   CartItem[]
+}
+
+model ProductVariant {
+    id        Int      @id @default(autoincrement())
+    product   Product  @relation(fields: [productId], references: [id])
+    productId Int
+    size      Size     @relation(fields: [sizeId], references: [id])
+    sizeId    Int
+    color     Color    @relation(fields: [colorId], references: [id])
+    colorId   Int
+    quantity  Int // Inventory count for this specific variant
+    sku       String? // Optional SKU for the variant
+    price     Decimal? // Optional custom price for the variant (if different from base price)
+}
+
+model Timer {
+    id          Int       @id @default(autoincrement())
+    name        String
+    discription String
+    discount    Int
+    endson      DateTime
+    products    Product[]
+}
+
+model Payment {
+    id            Int           @id @default(autoincrement())
+    status        PaymentStatus
+    type          PaymentType
+    amount        Int
+    orderId       Int?          @unique
+    order         Order?        @relation(fields: [orderId], references: [id])
+    TransactionId String
+    from          String
+    to            String
+}
+
+enum PaymentStatus {
+    PENDING
+    FAILED
+    SUCCESS
+    REFUNDED
+    CANCELLED
+}
+
+enum OrderStatus {
+    PENDING
+    PROCESSING
+    DISPATCHED
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+enum PaymentType {
+    CASH_ON_DELIVERY
+    CARD
+    UPI
+}
