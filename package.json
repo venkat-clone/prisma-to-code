@@ -2,6 +2,9 @@
   "name": "prisma-to-code",
   "version": "1.0.0",
   "main": "app.js",
+  "bin": {
+    "prisma-to-code": "./generate.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

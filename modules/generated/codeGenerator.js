@@ -4,7 +4,7 @@ const { crudTemplate } = require('../templates/crudTemplate');
 const { generateValidationSchema } = require('../templates/zodTemplate');
 const { generateRoutesTemplate, generateMainRoutesFile } = require('../templates/routeTemplate');
 const filterFunctionsTemplate = require('../templates/filterFunctionsTemplate');
-
+const { generateFile } = require('../utils/utils');
 const generateCode = (models, enums, outputPath) => {
     // Generate utility files
     generateFile(outputPath, 'utils', 'filterUtils.js', filterFunctionsTemplate());
@@ -21,12 +21,7 @@ const generateCode = (models, enums, outputPath) => {
     console.log('Generated main routes for all models');
 };
 
-// Generic function to create directories and write files
-const generateFile = (baseDir, subDir, fileName, content) => {
-    const filePath = path.join(baseDir, subDir, fileName);
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, content);
-};
+
 
 // Generate a controller for each model
 const generateController = (model, enums, outputPath) => {
