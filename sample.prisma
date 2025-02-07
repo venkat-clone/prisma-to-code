@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+//child{color,Size,image}
+model User {
+    id        Int       @id @default(autoincrement())
+    mobile    String    @unique
+    name      String?
+    age       Int       @default(0)
+    isAdmin   Boolean   @default(false)
+    addresses Address[]
+    cart      Cart?
+    Orders    Order[]
+}
+
+model Address {
+    id        Int     @id @default(autoincrement())
+    address   String
+    pincode   Int
+    isPrimary Boolean @default(false)
+    user      User    @relation(fields: [userid], references: [id])
+    userid    Int
+    orders    Order[]
+}
+
+
+enum PaymentStatus {
+    PENDING
+    FAILED
+    SUCCESS
+    REFUNDED
+    CANCELLED
+}
+
+enum OrderStatus {
+    PENDING
+    PROCESSING
+    DISPATCHED
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+enum PaymentType {
+    CASH_ON_DELIVERY
+    CARD
+    UPI
+}

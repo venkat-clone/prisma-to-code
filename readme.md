@@ -78,3 +78,7 @@ Make your changes and submit a pull request.
 Review and feedback are highly encouraged.
 License
 MIT License. See LICENSE for more details.
+
+
+npm link
+prisma-to-code

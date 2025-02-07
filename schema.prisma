@@ -12,11 +12,12 @@ datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
 }
-
+//inactive{inactive}
 model User {
     id        Int       @id @default(autoincrement())
     mobile    String    @unique
     name      String?
+    inactive Boolean   @default(false)
     age       Int       @default(0)
     isAdmin   Boolean   @default(false)
     addresses Address[]
@@ -33,14 +34,18 @@ model Address {
     userid    Int
     orders    Order[]
 }
+//create{products}
+//get{products}
+//required{user}
 
 model Cart {
     id       Int        @id @default(autoincrement())
     userId   Int        @unique // A cart is linked to a unique user
     user     User       @relation(fields: [userId], references: [id])
+    
     products CartItem[]
 }
-
+//required{product,size,color}
 model CartItem {
     id        Int     @id @default(autoincrement())
     cartId    Int
@@ -77,7 +82,7 @@ model OrderItem {
     quantity  Int
     price     Int
 }
-
+//child{color,Size,images}
 model Product {
     id          Int              @id @default(autoincrement())
     name        String
